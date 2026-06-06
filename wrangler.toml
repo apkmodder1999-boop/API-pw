@@ -1,0 +1,6 @@
+name = "pw-api-proxy"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+BASE_API_URL = "https://apis-maxxpw.vercel.app"
