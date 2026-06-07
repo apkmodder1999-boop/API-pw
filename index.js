@@ -1,9 +1,11 @@
 module.exports = async (req, res) => {
     const targetBaseUrl = "https://apis-maxxpw.vercel.app";
     
+    // Path extraction for proxy parsing
     const path = req.url;
     const targetUrl = `${targetBaseUrl}${path}`;
 
+    // Full Universal CORS compliance headers
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "*");
@@ -36,6 +38,6 @@ module.exports = async (req, res) => {
         }
 
     } catch (error) {
-        return res.status(500).json({ error: "Native Proxy Engine Failed", message: error.message });
+        return res.status(500).json({ error: "Proxy Request Failed", message: error.message });
     }
 };
