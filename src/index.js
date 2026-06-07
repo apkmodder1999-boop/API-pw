@@ -1,54 +1,50 @@
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    
-    // Target Vercel API URL taiyar karna
-    const targetUrl = `${env.BASE_API_URL}${url.pathname}${url.search}`;
+// Node.js Serverless Function for Vercel
+const fetch = require('node-fetch');
 
-    // Handling CORS Preflight Options Request (Taaki app block na kare)
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
-          "Access-Control-Allow-Headers": request.headers.get("Access-Control-Request-Headers") || "*",
-          "Access-Control-Max-Age": "86400",
-        },
-      });
+module.exports = async (req, res) => {
+    const targetBaseUrl = "https://apis-maxxpw.vercel.app";
+    
+    // Original path aur query params nikalna
+    const incomingUrl = new URL(req.url, `http://${req.headers.host}`);
+    const targetUrl = `${targetBaseUrl}${incomingUrl.pathname}${incomingUrl.search}`;
+
+    // CORS Headers Set Karna (Android App ke liye compulsory)
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    res.setHeader("Access-Control-Max-Age", "86400");
+
+    // Preflight request handle karna
+    if (req.method === "OPTIONS") {
+        return res.status(200).end();
     }
 
     try {
-      // Vercel ki original API ko request bhejna
-      const modifiedRequest = new Request(targetUrl, {
-        method: request.method,
-        headers: new Headers(request.headers),
-        body: request.body,
-        redirect: "follow"
-      });
+        // Headers copy karna bina host domain ke
+        const headers = { ...req.headers };
+        delete headers.host;
 
-      // Response receive karna
-      const response = await fetch(modifiedRequest);
+        // Vercel Proxy Request execute karna
+        const response = await fetch(targetUrl, {
+            method: req.method,
+            headers: headers,
+            body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
+            redirect: "follow"
+        });
 
-      // Naya response banana CORS headers ke sath taaki Android app me aaram se chale
-      const newHeaders = new Headers(response.headers);
-      newHeaders.set("Access-Control-Allow-Origin", "*");
-      newHeaders.set("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
-      newHeaders.set("Access-Control-Allow-Headers", "*");
+        const contentType = response.headers.get("content-type");
+        res.setHeader("Content-Type", contentType || "application/json");
 
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: newHeaders,
-      });
+        // Response check karke data bhejna
+        if (contentType && contentType.includes("application/json")) {
+            const json = await response.json();
+            return res.status(response.status).json(json);
+        } else {
+            const text = await response.text();
+            return res.status(response.status).send(text);
+        }
 
     } catch (error) {
-      return new Response(JSON.stringify({ error: "Proxy Failed", message: error.message }), {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
-      });
+        return res.status(500).json({ error: "Proxy Failed", message: error.message });
     }
-  },
 };
